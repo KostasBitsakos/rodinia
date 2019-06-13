@@ -7,21 +7,21 @@
 #include "backprop.h"
 
 #ifdef NV //NVIDIA
-	#include <oclUtils.h>
+#include <oclUtils.h>
 #else
-	#include <CL/cl.h>
+#include <CL/cl.h>
 #endif
 
 #ifdef TIMING
-    #include "timing.h"
+#include "timing.h"
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
 
 // local variables
-static cl_context	    context;
+static cl_context	context;
 static cl_command_queue cmd_queue;
-static cl_device_id   * device_list;
+static cl_device_id	*device_list;
 static cl_uint          num_devices;
 
 // OCL config
@@ -39,36 +39,39 @@ struct timeval tv_d2h_start, tv_d2h_end;
 struct timeval tv_kernel_start, tv_kernel_end;
 struct timeval tv_mem_alloc_start, tv_mem_alloc_end;
 struct timeval tv_close_start, tv_close_end;
-float init_time = 0, mem_alloc_time = 0, h2d_time = 0, kernel_time = 0,
-      d2h_time = 0, close_time = 0, total_time = 0;
+float init_time = 0, close_time = 0, total_time = 0,
+	mem_alloc_1_time = 0, mem_alloc_2_time = 0,
+	h2d_time = 0, h2d_1_time = 0, h2d_2_time = 0,
+	kernel1_time = 0, kernel2_time = 0,
+	d2h_time = 0, d2h_1_time = 0, d2h_2_time = 0;
 #endif
 
 static int initialize(void)
 {
 	cl_int result;
 	size_t size;
-    cl_uint num_platforms;
+	cl_uint num_platforms;
 
-    // get OpenCL platforms
+	// get OpenCL platforms
 	if (clGetPlatformIDs(0, NULL, &num_platforms) != CL_SUCCESS) { printf("ERROR: clGetPlatformIDs(0,0,*) failed\n"); return -1; }
 	cl_platform_id all_platform_id[num_platforms];
 	if (clGetPlatformIDs(num_platforms, all_platform_id, NULL) != CL_SUCCESS) { printf("ERROR: clGetPlatformIDs(*,*,0) failed\n"); return -1; }
-    cl_platform_id platform_id = all_platform_id[platform_id_inuse];
+	cl_platform_id platform_id = all_platform_id[platform_id_inuse];
 
-    // get device
-    if (clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_ALL, 0, NULL, &num_devices) != CL_SUCCESS) { printf("ERROR: clGetDeviceIDs failed\n"); return -1; };
+	// get device
+	if (clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_ALL, 0, NULL, &num_devices) != CL_SUCCESS) { printf("ERROR: clGetDeviceIDs failed\n"); return -1; };
 	printf("num_devices = %d\n", num_devices);
-    if(device_id_inuse > num_devices) {
-        printf("Invalid Device Number\n");
-        return -1;
-    }
+	if(device_id_inuse > num_devices) {
+		printf("Invalid Device Number\n");
+		return -1;
+	}
 	device_list = new cl_device_id[num_devices];
 	//device_list = (cl_device_id *)malloc(sizeof(cl_device_id)*num_devices);
 	if( !device_list ) { printf("ERROR: new cl_device_id[] failed\n"); return -1; }
-    if (clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_ALL, num_devices, device_list, NULL) != CL_SUCCESS) { printf("ERROR: clGetDeviceIDs failed\n"); return -1; };
+	if (clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_ALL, num_devices, device_list, NULL) != CL_SUCCESS) { printf("ERROR: clGetDeviceIDs failed\n"); return -1; };
 
-    // get device type
-    if (clGetDeviceInfo(device_list[device_id_inuse], CL_DEVICE_TYPE, sizeof(device_type), (void *)&device_type, NULL)!= CL_SUCCESS) { printf("ERROR: clGetDeviceIDs failed\n"); return -1; };
+	// get device type
+	if (clGetDeviceInfo(device_list[device_id_inuse], CL_DEVICE_TYPE, sizeof(device_type), (void *)&device_type, NULL)!= CL_SUCCESS) { printf("ERROR: clGetDeviceIDs failed\n"); return -1; };
 
 	// create OpenCL context
 	cl_context_properties ctxprop[] = { CL_CONTEXT_PLATFORM, (cl_context_properties)platform_id, 0};
@@ -103,9 +106,9 @@ static int shutdown()
 }
 
 double gettime() {
-  struct timeval t;
-  gettimeofday(&t,NULL);
-  return t.tv_sec+t.tv_usec*1e-6;
+	struct timeval t;
+	gettimeofday(&t,NULL);
+	return t.tv_sec+t.tv_usec*1e-6;
 }
 
 unsigned int num_threads = 0;
@@ -144,7 +147,7 @@ int bpnn_train_kernel(BPNN *net, float *eo, float *eh)
 	fclose(fp);
 
 #ifdef  TIMING
-    gettimeofday(&tv_total_start, NULL);
+	gettimeofday(&tv_total_start, NULL);
 #endif
 	if(initialize()) return -1;
 
@@ -178,8 +181,8 @@ int bpnn_train_kernel(BPNN *net, float *eo, float *eh)
 
 
 	float *input_weights_one_dim;
-    float *input_weights_prev_one_dim;
-	float * partial_sum;
+	float *input_weights_prev_one_dim;
+	float *partial_sum;
 	float sum;
 	float num_blocks = in / BLOCK_SIZE;
 
@@ -196,9 +199,9 @@ int bpnn_train_kernel(BPNN *net, float *eo, float *eh)
 	int m = 0;
 	for (int k = 0; k <= in; k++) {
 		for (int j = 0; j <= hid; j++) {
-		input_weights_one_dim[m] = net->input_weights[k][j];
-		input_weights_prev_one_dim[m] = net-> input_prev_weights[k][j];
-	    m++;
+			input_weights_one_dim[m] = net->input_weights[k][j];
+			input_weights_prev_one_dim[m] = net-> input_prev_weights[k][j];
+			m++;
 		}
 	}
 
@@ -209,72 +212,113 @@ int bpnn_train_kernel(BPNN *net, float *eo, float *eh)
 	cl_mem hidden_delta_ocl;
 	cl_mem input_prev_weights_ocl;
 
-#ifdef  TIMING
-    gettimeofday(&tv_mem_alloc_start, NULL);
+#ifdef TIMING
+	gettimeofday(&tv_mem_alloc_start, NULL);
 #endif
+
+	// input to: 1, 2
 	input_ocl = clCreateBuffer(context, CL_MEM_READ_WRITE, (in + 1) * sizeof(float), NULL, &err );
 	if(err != CL_SUCCESS) { printf("ERROR: clCreateBuffer input_ocl\n"); return -1;}
+
+	// input to: 1, 2
 	input_hidden_ocl = clCreateBuffer(context, CL_MEM_READ_WRITE, (in + 1) * (hid + 1) * sizeof(float), NULL, &err );
 	if(err != CL_SUCCESS) { printf("ERROR: clCreateBuffer input_hidden_ocl\n"); return -1;}
-	output_hidden_ocl = clCreateBuffer(context, CL_MEM_READ_WRITE, (hid + 1) * sizeof(float), NULL, &err );
-	if(err != CL_SUCCESS) { printf("ERROR: clCreateBuffer output_hidden_ocl\n"); return -1;}
-	hidden_partial_sum = clCreateBuffer(context, CL_MEM_READ_WRITE, num_blocks * WIDTH * sizeof(float), NULL, &err );
-	if(err != CL_SUCCESS) { printf("ERROR: clCreateBuffer hidden_partial_sum\n"); return -1;}
-	hidden_delta_ocl = clCreateBuffer(context, CL_MEM_READ_WRITE, (hid + 1) * sizeof(float), NULL, &err );
-	if(err != CL_SUCCESS) { printf("ERROR: clCreateBuffer hidden_delta_ocl\n"); return -1;}
-	input_prev_weights_ocl = clCreateBuffer(context, CL_MEM_READ_WRITE, (in + 1) * (hid + 1) * sizeof(float), NULL, &err );
-	if(err != CL_SUCCESS) { printf("ERROR: clCreateBuffer input_prev_weights_ocl\n"); return -1;}
-#ifdef  TIMING
-    gettimeofday(&tv_mem_alloc_end, NULL);
-    tvsub(&tv_mem_alloc_end, &tv_mem_alloc_start, &tv);
-    mem_alloc_time = tv.tv_sec * 1000.0 + (float) tv.tv_usec / 1000.0;
+
+#ifdef TIMING
+	gettimeofday(&tv_mem_alloc_end, NULL);
+	tvsub(&tv_mem_alloc_end, &tv_mem_alloc_start, &tv);
+	mem_alloc_1_time += tv.tv_sec * 1000.0 + (float) tv.tv_usec / 1000.0;
+	mem_alloc_2_time += tv.tv_sec * 1000.0 + (float) tv.tv_usec / 1000.0;
+
+	gettimeofday(&tv_mem_alloc_start, NULL);
 #endif
 
+	// input to: 1
+	output_hidden_ocl = clCreateBuffer(context, CL_MEM_READ_WRITE, (hid + 1) * sizeof(float), NULL, &err );
+	if(err != CL_SUCCESS) { printf("ERROR: clCreateBuffer output_hidden_ocl\n"); return -1;}
+
+	// input to: 1
+	hidden_partial_sum = clCreateBuffer(context, CL_MEM_READ_WRITE, num_blocks * WIDTH * sizeof(float), NULL, &err );
+	if(err != CL_SUCCESS) { printf("ERROR: clCreateBuffer hidden_partial_sum\n"); return -1;}
+
+#ifdef TIMING
+	gettimeofday(&tv_mem_alloc_end, NULL);
+	tvsub(&tv_mem_alloc_end, &tv_mem_alloc_start, &tv);
+	mem_alloc_1_time += tv.tv_sec * 1000.0 + (float) tv.tv_usec / 1000.0;
+
+	gettimeofday(&tv_mem_alloc_start, NULL);
+#endif
+
+	// input to: 2
+	hidden_delta_ocl = clCreateBuffer(context, CL_MEM_READ_WRITE, (hid + 1) * sizeof(float), NULL, &err );
+	if(err != CL_SUCCESS) { printf("ERROR: clCreateBuffer hidden_delta_ocl\n"); return -1;}
+
+	// input to: 2
+	input_prev_weights_ocl = clCreateBuffer(context, CL_MEM_READ_WRITE, (in + 1) * (hid + 1) * sizeof(float), NULL, &err );
+	if(err != CL_SUCCESS) { printf("ERROR: clCreateBuffer input_prev_weights_ocl\n"); return -1;}
+
+
+#ifdef TIMING
+	gettimeofday(&tv_mem_alloc_end, NULL);
+	tvsub(&tv_mem_alloc_end, &tv_mem_alloc_start, &tv);
+	mem_alloc_2_time += tv.tv_sec * 1000.0 + (float) tv.tv_usec / 1000.0;
+#endif
+
+
 	printf("Performing %s computation\n", device_type == CL_DEVICE_TYPE_GPU ? "GPU" : "CPU");
-    cl_event event;
-    cl_event write_event[3];
+	cl_event event;
+	cl_event write_event[3];
 
 	//write buffers
+	// h2d: 1, 2
 	err = clEnqueueWriteBuffer(cmd_queue, input_ocl, 1, 0, (in + 1) * sizeof(float), net->input_units, 0, 0, &write_event[0]);
 	if(err != CL_SUCCESS) { printf("ERROR: clEnqueueWriteBuffer input_ocl\n"); return -1; }
 
+	// h2d: 1, 2
 	err = clEnqueueWriteBuffer(cmd_queue, input_hidden_ocl, 1, 0, (in + 1) * (hid + 1) * sizeof(float), input_weights_one_dim, 0, 0, &write_event[1]);
 	if(err != CL_SUCCESS) { printf("ERROR: clEnqueueWriteBuffer input_hidden_ocl\n"); return -1; }
+
 #ifdef TIMING
-    h2d_time += probe_event_time(write_event[0],cmd_queue);
-    h2d_time += probe_event_time(write_event[1],cmd_queue);
+	h2d_time = probe_event_time(write_event[0], cmd_queue);
+	h2d_1_time += h2d_time;
+	h2d_2_time += h2d_time;
+
+	h2d_time = probe_event_time(write_event[1], cmd_queue);
+	h2d_1_time += h2d_time;
+	h2d_2_time += h2d_time;
 #endif
-    clReleaseEvent(write_event[0]);
-    clReleaseEvent(write_event[1]);
+	clReleaseEvent(write_event[0]);
+	clReleaseEvent(write_event[1]);
 
 	clSetKernelArg(kernel1, 0, sizeof(void *), (void*) &input_ocl);
 	clSetKernelArg(kernel1, 1, sizeof(void *), (void*) &output_hidden_ocl);
 	clSetKernelArg(kernel1, 2, sizeof(void *), (void*) &input_hidden_ocl);
 	clSetKernelArg(kernel1, 3, sizeof(void *), (void*) &hidden_partial_sum );
-	clSetKernelArg(kernel1, 4, sizeof(float) *  HEIGHT, (void*)NULL );
-	clSetKernelArg(kernel1, 5, sizeof(float ) *  HEIGHT * WIDTH, (void*)NULL );
+	clSetKernelArg(kernel1, 4, sizeof(float) * HEIGHT, (void*)NULL );
+	clSetKernelArg(kernel1, 5, sizeof(float) * HEIGHT * WIDTH, (void*)NULL);
 	clSetKernelArg(kernel1, 6, sizeof(cl_int), (void*) &in);
 	clSetKernelArg(kernel1, 7, sizeof(cl_int), (void*) &hid);
 
 	err = clEnqueueNDRangeKernel(cmd_queue, kernel1, 2, NULL, global_work, local_work, 0, 0, &event);
 	if(err != CL_SUCCESS) { printf("ERROR: 1  clEnqueueNDRangeKernel()=>%d failed\n", err); return -1; }
 #ifdef TIMING
-    kernel_time += probe_event_time(event,cmd_queue);
+	kernel1_time += probe_event_time(event,cmd_queue);
 #endif
-    clReleaseEvent(event);
+	clReleaseEvent(event);
 
+	// d2h: 1
 	err = clEnqueueReadBuffer(cmd_queue, hidden_partial_sum, 1, 0, num_blocks * WIDTH * sizeof(float), partial_sum, 0, 0, &event);
 	if(err != CL_SUCCESS) { printf("ERROR: 1  clEnqueueReadBuffer: partial sum\n"); return -1; }
 #ifdef TIMING
-    d2h_time += probe_event_time(event,cmd_queue);
+	d2h_1_time += probe_event_time(event, cmd_queue);
 #endif
-    clReleaseEvent(event);
+	clReleaseEvent(event);
 
 	for (int j = 1; j <= hid; j++) {
 		sum = 0.0;
 		for (int k = 0; k < num_blocks; k++) {
-		sum += partial_sum[k * hid + j-1] ;
-    }
+			sum += partial_sum[k * hid + j-1] ;
+		}
 		sum += net->input_weights[0][j];
 		net-> hidden_units[j] = float(1.0 / (1.0 + exp(-sum)));
 	}
@@ -285,22 +329,32 @@ int bpnn_train_kernel(BPNN *net, float *eo, float *eh)
 	bpnn_hidden_error(net->hidden_delta, hid, net->output_delta, out, net->hidden_weights, net->hidden_units, &hid_err);
 	bpnn_adjust_weights(net->output_delta, out, net->hidden_units, hid, net->hidden_weights, net->hidden_prev_weights);
 
+	// h2d: 2
 	err = clEnqueueWriteBuffer(cmd_queue, hidden_delta_ocl,       1, 0, (hid + 1) * sizeof(float), net->hidden_delta, 0, 0, &write_event[0]);
 	if(err != CL_SUCCESS) { printf("ERROR: clEnqueueWriteBuffer hidden_delta_ocl\n"); return -1; }
 
+	// h2d: 2
 	err = clEnqueueWriteBuffer(cmd_queue, input_prev_weights_ocl, 1, 0, (in + 1) * (hid + 1) * sizeof(float), input_weights_prev_one_dim, 0, 0, &write_event[1]);
 	if(err != CL_SUCCESS) { printf("ERROR: clEnqueueWriteBuffer input_prev_weights_ocl\n"); return -1; }
 
+#ifdef TIMING
+	h2d_2_time += probe_event_time(write_event[0], cmd_queue);
+	h2d_2_time += probe_event_time(write_event[1], cmd_queue);
+#endif
+
+	// h2d: 1, 2
 	err = clEnqueueWriteBuffer(cmd_queue, input_hidden_ocl,       1, 0, (in + 1) * (hid + 1) * sizeof(float), input_weights_one_dim, 0, 0, &write_event[2]);
 	if(err != CL_SUCCESS) { printf("ERROR: clEnqueueWriteBuffer input_hidden_ocl\n"); return -1; }
+
 #ifdef TIMING
-    h2d_time += probe_event_time(write_event[0],cmd_queue);
-    h2d_time += probe_event_time(write_event[1],cmd_queue);
-    h2d_time += probe_event_time(write_event[2],cmd_queue);
+	h2d_time = probe_event_time(write_event[2], cmd_queue);
+	h2d_1_time += h2d_time;
+	h2d_2_time += h2d_time;
 #endif
-    clReleaseEvent(write_event[0]);
-    clReleaseEvent(write_event[1]);
-    clReleaseEvent(write_event[2]);
+
+	clReleaseEvent(write_event[0]);
+	clReleaseEvent(write_event[1]);
+	clReleaseEvent(write_event[2]);
 
 	clSetKernelArg(kernel2, 0, sizeof(void *), (void*) &hidden_delta_ocl);
 	clSetKernelArg(kernel2, 1, sizeof(cl_int), (void*) &hid);
@@ -312,25 +366,31 @@ int bpnn_train_kernel(BPNN *net, float *eo, float *eh)
 	err = clEnqueueNDRangeKernel(cmd_queue, kernel2, 2, NULL, global_work, local_work, 0, 0, &event);
 	if(err != CL_SUCCESS) { printf("ERROR: 1  clEnqueueNDRangeKernel()=>%d failed\n", err); return -1; }
 #ifdef TIMING
-    kernel_time += probe_event_time(event,cmd_queue);
+	kernel2_time += probe_event_time(event, cmd_queue);
 #endif
-    clReleaseEvent(event);
+	clReleaseEvent(event);
 
+	// d2h: 1, 2
 	err = clEnqueueReadBuffer(cmd_queue, input_ocl, 1, 0, (in + 1) * sizeof(float), net->input_units, 0, 0, &event);
 	if(err != CL_SUCCESS) { printf("ERROR: 1  clEnqueueReadBuffer: input_ocl\n"); return -1; }
 #ifdef TIMING
-    d2h_time += probe_event_time(event,cmd_queue);
+	d2h_time = probe_event_time(event, cmd_queue);
+	d2h_1_time += d2h_time;
+	d2h_2_time += d2h_time;
 #endif
-    clReleaseEvent(event);
+	clReleaseEvent(event);
 
+	// d2h: 1, 2
 	err = clEnqueueReadBuffer(cmd_queue, input_hidden_ocl, 1, 0, (in + 1) * (hid + 1) * sizeof(float), input_weights_one_dim, 0, 0, &event);
 	if(err != CL_SUCCESS) { printf("ERROR: 1  clEnqueueReadBuffer: input_hidden_ocl\n"); return -1; }
 #ifdef TIMING
-    d2h_time += probe_event_time(event,cmd_queue);
+	d2h_time = probe_event_time(event, cmd_queue);
+	d2h_1_time += d2h_time;
+	d2h_2_time += d2h_time;
 #endif
-    clReleaseEvent(event);
+	clReleaseEvent(event);
 
-#ifdef  TIMING
+#ifdef TIMING
 	gettimeofday(&tv_close_start, NULL);
 #endif
 
@@ -344,9 +404,9 @@ int bpnn_train_kernel(BPNN *net, float *eo, float *eh)
 	free(partial_sum);
 	free(input_weights_one_dim);
 
-    shutdown();
+	shutdown();
 
-#ifdef  TIMING
+#ifdef TIMING
 	gettimeofday(&tv_close_end, NULL);
 	tvsub(&tv_close_end, &tv_close_start, &tv);
 	close_time = tv.tv_sec * 1000.0 + (float) tv.tv_usec / 1000.0;
@@ -354,10 +414,14 @@ int bpnn_train_kernel(BPNN *net, float *eo, float *eh)
 	total_time = tv.tv_sec * 1000.0 + (float) tv.tv_usec / 1000.0;
 
 	printf("Init: %f\n", init_time);
-	printf("MemAlloc: %f\n", mem_alloc_time);
-	printf("HtoD: %f\n", h2d_time);
-	printf("Exec: %f\n", kernel_time);
-	printf("DtoH: %f\n", d2h_time);
+	printf("MemAlloc (kernel1): %f\n", mem_alloc_1_time);
+	printf("MemAlloc (kernel2): %f\n", mem_alloc_2_time);
+	printf("HtoD (kernel1): %f\n", h2d_1_time);
+	printf("HtoD (kernel2): %f\n", h2d_2_time);
+	printf("Exec (kernel1): %f\n", kernel1_time);
+	printf("Exec (kernel2): %f\n", kernel2_time);
+	printf("DtoH (kernel1): %f\n", d2h_1_time);
+	printf("DtoH (kernel2): %f\n", d2h_2_time);
 	printf("Close: %f\n", close_time);
 	printf("Total: %f\n", total_time);
 #endif

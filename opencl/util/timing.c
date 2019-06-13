@@ -19,22 +19,24 @@ void time_measure_end(struct timeval *tv)
 	printf("Time (Memory Copy and Launch) = %f (ms)\n", d);
 }
 
+#if 0 // ckatsak
 float probe_event_time(cl_event event, cl_command_queue command_queue) {
-    cl_int error=0;
-    cl_ulong eventStart,eventEnd;
-    clFinish(command_queue);
-    error = clGetEventProfilingInfo(event,CL_PROFILING_COMMAND_START,
-                                    sizeof(cl_ulong),&eventStart,NULL);
-    if (error != CL_SUCCESS) {
-        printf("ERROR (%d) in event start profiling.\n", error);
-        return 0;
-    }
-    error = clGetEventProfilingInfo(event,CL_PROFILING_COMMAND_END,
-                                    sizeof(cl_ulong),&eventEnd,NULL);
-    if (error != CL_SUCCESS) {
-        printf("ERROR (%d) in event end profiling.\n", error);
-        return 0;
-    }
+	cl_int error = 0;
+	cl_ulong eventStart, eventEnd;
+	clFinish(command_queue);
+	error = clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_START,
+			sizeof(cl_ulong), &eventStart, NULL);
+	if (error != CL_SUCCESS) {
+		printf("ERROR (%d) in event start profiling.\n", error);
+		return 0;
+	}
+	error = clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_END,
+			sizeof(cl_ulong), &eventEnd, NULL);
+	if (error != CL_SUCCESS) {
+		printf("ERROR (%d) in event end profiling.\n", error);
+		return 0;
+	}
 
-    return (float)((eventEnd-eventStart)/1000000.0);
+	return (float)((eventEnd - eventStart) / 1000000.0);
 }
+#endif
