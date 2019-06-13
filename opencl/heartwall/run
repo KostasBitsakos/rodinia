@@ -1,0 +1,5 @@
+#!/bin/bash
+
+export DATA_DIR=/home/users/kbitsak/gpu-rodinia/gpu-rodinia/data
+./heartwall -n 104 -f ${DATA_DIR}/heartwall/test.avi -i ../../data/heartwall/input.txt -p 0 -d 0
+

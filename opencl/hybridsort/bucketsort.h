@@ -4,9 +4,9 @@
 #define LOG_DIVISIONS	10
 #define DIVISIONS		(1 << LOG_DIVISIONS)
 
-void init_bucketsort(int listsize);
+void init_bucketsort(long long listsize);
 void finish_bucketsort();
-void bucketSort(float *d_input, float *d_output, int listsize,
+void bucketSort(float *d_input, float *d_output, long long listsize,
 				int *sizes, int *nullElements, float minimum, float maximum,
 				unsigned int *origOffsets);
 void histogram1024GPU(
@@ -15,7 +15,7 @@ void histogram1024GPU(
                       float minimum,
                       float maximum,
                       int dataN);
-void histogramInit(int listsize);
+void histogramInit(long long listsize);
 void finish_histogram();
 double getBucketTime();
 

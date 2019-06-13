@@ -1,7 +1,7 @@
 include ../../common/make.config
 
 #Can be changed by `make TYPE=CPU`
-TYPE = GPU
+TYPE = CPU
 
 #Library
 ifeq ($(TYPE),GPU)
@@ -17,14 +17,14 @@ endif
 ifdef OUTPUT
 override OUTPUT = -DOUTPUT
 endif
-
+#echo $(OPENCL_INC)
 OCL_INC_DIR = -I$(OPENCL_INC)
 OCL_LIB_DIR = -L$(OPENCL_LIB)
 
 C_C = gcc
 OCL_LIB = -lOpenCL
 
-EXE = heartwall.out
+EXE = heartwall
 
 $(EXE):	./main.o \
 			./kernel/kernel_gpu_opencl_wrapper.o \
@@ -42,9 +42,11 @@ $(EXE):	./main.o \
 			./util/opencl/opencl.o \
 			../util/timing.c \
 			-lm \
+			-o $(EXE) \
 			$(OCL_LIB_DIR) \
-			$(OCL_LIB) -o $(EXE)
-
+                        $(OCL_INC_DIR) \
+			-lOpenCL
+#edw apo panw xoris kanena logo eixe anti gia INC, LIB kai de douleve
 run: $(EXE)
 	./$(EXE) -n 100 -f ../../data/heartwall/test.avi -i ../../data/heartwall/input.txt -p 0 -d 0
 
@@ -55,9 +57,13 @@ run: $(EXE)
 ./main.o:	./main.h \
 			./main.c
 	$(C_C)	$(OUTPUT) $(KERNEL_DIM) ./main.c \
-			-c \
+			 -c \
 			-o ./main.o \
-			-O3
+			-O3 \
+			 $(OCL_LIB_DIR) \
+                        $(OCL_INC_DIR) \
+                        -lOpenCL
+
 
 # ======================================================================================================================================================150
 #	KERNELS
@@ -71,7 +77,10 @@ run: $(EXE)
 			-O3 \
 			-I../util \
 			-DTIMING \
-			$(OCL_INC_DIR)
+			 $(OCL_LIB_DIR) \
+                        $(OCL_INC_DIR) \
+                        -lOpenCL
+
 
 # ======================================================================================================================================================150
 #	UTILITIES
@@ -82,28 +91,45 @@ run: $(EXE)
 	$(C_C)	./util/avi/avilib.c \
 			-c \
 			-o ./util/avi/avilib.o \
-			-O3
+			-O3 \
+			 $(OCL_LIB_DIR) \
+                        $(OCL_INC_DIR) \
+                        -lOpenCL
+
 
 ./util/avi/avimod.o:./util/avi/avilib.h \
 					./util/avi/avimod.c
 	$(C_C)	./util/avi/avimod.c \
-			-c \
+			 -c \
 			-o ./util/avi/avimod.o \
-			-O3
+			-O3 \
+			 $(OCL_LIB_DIR) \
+                        $(OCL_INC_DIR) \
+                        -lOpenCL
+
 
 ./util/file/file.o:	./util/file/file.h \
 					./util/file/file.c
 	$(C_C)	./util/file/file.c \
-			-c \
+			 -c \
 			-o ./util/file/file.o \
-			-O3 -Wno-unused-result
+			-O3 -Wno-unused-result \
+			 $(OCL_LIB_DIR) \
+                        $(OCL_INC_DIR) \
+                        -lOpenCL
+
+
 
 ./util/timer/timer.o:	./util/timer/timer.h \
 						./util/timer/timer.c
 	$(C_C)	./util/timer/timer.c \
 			-c \
 			-o ./util/timer/timer.o \
-			-O3
+			-O3 \
+			 $(OCL_LIB_DIR) \
+                        $(OCL_INC_DIR) \
+                        -lOpenCL
+
 
 ./util/opencl/opencl.o:	./util/opencl/opencl.h \
 						./util/opencl/opencl.c
@@ -111,10 +137,14 @@ run: $(EXE)
 			-c \
 			-o ./util/opencl/opencl.o \
 			-O3 \
-			$(OCL_INC_DIR)
+			 $(OCL_LIB_DIR) \
+                        $(OCL_INC_DIR) \
+                        -lOpenCL
+
+			
 
 clean:
-	rm	*.o heartwall.out \
+	rm	*.o heartwall \
 		./kernel/*.o \
 		./util/avi/*.o \
 		./util/file/*.o \

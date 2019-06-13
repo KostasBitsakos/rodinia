@@ -1,0 +1,15 @@
+Reading File
+Problem size in Memory: 1308.62 MB.
+number of platforms:2
+vendor is NVIDIA Corporation
+vendor is Intel(R) Corporation
+device number: 1
+Creating GPU Context
+Init: 1214.661011
+MemAlloc: 0.018000
+HtoD: 515.867493
+Exec: 363.380432
+DtoH: 30.225569
+Close: 29.427999
+Total: 2162.743896
+--cambine:passed:-)

@@ -8,10 +8,10 @@
 #endif
 #define BUCKET_BLOCK_MEMORY		(DIVISIONS * BUCKET_WARP_N)
 #define BUCKET_BAND				128
-#define SIZE (1 << 22)
+#define SIZE (1 << 28)
 
 #define DATA_SIZE (1024)
-#define MAX_SOURCE_SIZE (0x100000)
+#define MAX_SOURCE_SIZE (0x10000000)
 #define HISTOGRAM_SIZE (1024 * sizeof(unsigned int))
 
 
@@ -46,7 +46,7 @@ extern float init_time, mem_alloc_time, h2d_time, kernel_time,
 ////////////////////////////////////////////////////////////////////////////////
 // Forward declarations
 ////////////////////////////////////////////////////////////////////////////////
-void calcPivotPoints(float *histogram, int histosize, int listsize,
+void calcPivotPoints(float *histogram, int histosize, long long listsize,
 					 int divisions, float min, float max, float *pivotPoints,
 					 float histo_width);
 
@@ -75,7 +75,7 @@ unsigned int *d_Result1024;
 cl_device_id device_id;            // compute device id
 cl_context bucketContext;                 // compute context
 cl_context histoContext;
-cl_command_queue bucketCommands;          // compute command queue
+cl_command_queue bucketCommands;          // compute command queue i
 cl_command_queue histoCommands;
 cl_program bucketProgram;                 // compute program
 cl_program histoProgram;
@@ -100,7 +100,7 @@ extern int device_id_inuse;
 ////////////////////////////////////////////////////////////////////////////////
 // Initialize the bucketsort algorithm
 ////////////////////////////////////////////////////////////////////////////////
-void init_bucketsort(int listsize)
+void init_bucketsort(long long listsize)
 {
     cl_uint num = 0;
     clGetPlatformIDs(0, NULL, &num);
@@ -129,7 +129,7 @@ void init_bucketsort(int listsize)
     
     FILE *fp;
     const char fileName[]="./bucketsort_kernels.cl";
-    size_t source_size;
+    long long source_size;
     char *source_str;
     
     fp = fopen(fileName, "r");
@@ -143,7 +143,7 @@ void init_bucketsort(int listsize)
 	source_size = fread(source_str, 1, MAX_SOURCE_SIZE, fp);
 	fclose(fp);
     
-    bucketProgram = clCreateProgramWithSource(bucketContext, 1, (const char **) &source_str, (const size_t *)&source_size, &err);
+    bucketProgram = clCreateProgramWithSource(bucketContext, 1, (const char **) &source_str, (const long long *)&source_size, &err);
     if (!bucketProgram)
     {
         printf("Error: Failed to create bucket compute program!\n");
@@ -153,7 +153,7 @@ void init_bucketsort(int listsize)
     err = clBuildProgram(bucketProgram, 0, NULL, NULL, NULL, NULL);
     if (err != CL_SUCCESS)
     {
-        size_t len;
+        long long len;
         char buffer[2048];
         
         printf("Error: Failed to build bucket program executable!\n");
@@ -220,7 +220,7 @@ void finish_bucketsort()
 	free(historesult);
 }
 
-void histogramInit(int listsize) {
+void histogramInit(long long listsize) {
     cl_uint num = 0;
     clGetPlatformIDs(0, NULL, &num);
     cl_platform_id platformID[num];
@@ -259,7 +259,7 @@ void histogramInit(int listsize) {
 
     FILE *fp;
     const char fileName[]="./histogram1024.cl";
-    size_t source_size;
+    long long source_size;
     char *source_str;
 
     fp = fopen(fileName, "r");
@@ -274,7 +274,7 @@ void histogramInit(int listsize) {
     source_str[source_size] = '\0';
 	fclose(fp);
 
-    histoProgram = clCreateProgramWithSource(histoContext, 1, (const char **) &source_str, (const size_t *)&source_size, &err);
+    histoProgram = clCreateProgramWithSource(histoContext, 1, (const char **) &source_str, (const long long *)&source_size, &err);
     if (!histoProgram)
     {
         printf("Error: Failed to create compute program! %d\n", err);
@@ -285,7 +285,7 @@ void histogramInit(int listsize) {
     err = clBuildProgram(histoProgram, 0, NULL, NULL, NULL, NULL);
     if (err != CL_SUCCESS)
     {
-        size_t len;
+        long long len;
         char buffer[2048];
 
         printf("Error: Failed to build program executable!\n");
@@ -399,7 +399,7 @@ void finish_histogram() {
 // Given the input array of floats and the min and max of the distribution,
 // sort the elements into float4 aligned buckets of roughly equal size
 ////////////////////////////////////////////////////////////////////////////////
-void bucketSort(float *d_input, float *d_output, int listsize,
+void bucketSort(float *d_input, float *d_output, long long listsize,
 				int *sizes, int *nullElements, float minimum, float maximum,
 				unsigned int *origOffsets)
 {
@@ -710,7 +710,7 @@ double getBucketTime() {
 // Given a histogram of the list, figure out suitable pivotpoints that divide
 // the list into approximately listsize/divisions elements each
 ////////////////////////////////////////////////////////////////////////////////
-void calcPivotPoints(float *histogram, int histosize, int listsize,
+void calcPivotPoints(float *histogram, int histosize, long long listsize,
 					 int divisions, float min, float max, float *pivotPoints, float histo_width)
 {
 	float elemsPerSlice = listsize/(float)divisions;

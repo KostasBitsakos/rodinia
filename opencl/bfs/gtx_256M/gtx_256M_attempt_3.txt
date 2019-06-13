@@ -1,0 +1,17 @@
+Reading File
+Problem size in Memory: 1879.01 MB.
+number of platforms:2
+vendor is NVIDIA Corporation
+vendor is Intel(R) Corporation
+device number: 1
+Creating GPU Context
+ERROR (-58) in event start profiling.
+ERROR (-58) in event start profiling.
+Init: 2202.373047
+MemAlloc: 0.019000
+HtoD: 1567.009277
+Exec: 6.876160
+DtoH: 229.006882
+Close: 24.021999
+Total: 4039.133057
+--cambine: failed:-(

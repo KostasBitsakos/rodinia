@@ -79,28 +79,28 @@ extern double wtime(void);
 	/* reference min_rmse value */
 
 /*---< cluster() >-----------------------------------------------------------*/
-int cluster(int      npoints,				/* number of data points */
-            int      nfeatures,				/* number of attributes for each point */
+size_t cluster(size_t      npoints,				/* number of data points */
+            size_t      nfeatures,				/* number of attributes for each point */
             float  **features,			/* array: [npoints][nfeatures] */                  
-            int      min_nclusters,			/* range of min to max number of clusters */
-			int		 max_nclusters,
+            size_t      min_nclusters,			/* range of min to max number of clusters */
+			size_t		 max_nclusters,
             float    threshold,				/* loop terminating factor */
-            int     *best_nclusters,		/* out: number between min and max with lowest RMSE */
+            size_t     *best_nclusters,		/* out: number between min and max with lowest RMSE */
             float ***cluster_centres,		/* out: [best_nclusters][nfeatures] */
 			float	*min_rmse,				/* out: minimum RMSE */
-			int		 isRMSE,				/* calculate RMSE */
-			int		 nloops					/* number of iteration for each number of clusters */
+			size_t		 isRMSE,				/* calculate RMSE */
+			size_t		 nloops					/* number of iteration for each number of clusters */
 			)
 {    
-	int		nclusters;						/* number of clusters k */	
-	int		index =0;						/* number of iteration to reach the best RMSE */
-	int		rmse;							/* RMSE for each clustering */
-    int    *membership;						/* which cluster a data point belongs to */
+	size_t		nclusters;						/* number of clusters k */	
+	size_t		index =0;						/* number of iteration to reach the best RMSE */
+	size_t		rmse;							/* RMSE for each clustering */
+    size_t    *membership;						/* which cluster a data point belongs to */
     float **tmp_cluster_centres;			/* hold coordinates of cluster centers */
-	int		i;
+	size_t		i;
 
 	/* allocate memory for membership */
-    membership = (int*) malloc(npoints * sizeof(int));
+    membership = (size_t*) malloc(npoints * sizeof(size_t));
 
 	/* sweep k from min to max_nclusters to find the best number of clusters */
 	for(nclusters = min_nclusters; nclusters <= max_nclusters; nclusters++)

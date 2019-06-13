@@ -24,10 +24,10 @@
 
 // Use a static data size for simplicity
 //
-#define SIZE (1000000)
+#define SIZE (100)
 
 #define DATA_SIZE (1024)
-#define MAX_SOURCE_SIZE (0x100000)
+#define MAX_SOURCE_SIZE (0x1000000)
 #define HISTOGRAM_SIZE (1024 * sizeof(unsigned int))
 
 #ifdef TIMING
@@ -56,7 +56,7 @@ int compare(const void *a, const void *b) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-cl_float4*runMergeSort(int listsize, int divisions,
+cl_float4*runMergeSort(long long listsize, int divisions,
                                cl_float4 *d_origList, cl_float4 *d_resultList,
                                int *sizes, int *nullElements,
                        unsigned int *origOffsets);
@@ -95,15 +95,15 @@ int main(int argc, char** argv)
     
     unsigned int correct;               // number of correct results returned
 
-    size_t global;                      // global domain size for our calculation
-    size_t local;                       // local domain size for our calculation
+    long long global;                      // global domain size for our calculation
+    long long local;                       // local domain size for our calculation
     unsigned int *results;
 
     // Fill our data set with random float values
     //
     clCmdParams(argc, argv);
     
-    int numElements = 0 ;
+    long long numElements = 0 ;
         
     if(strcmp(argv[1],"r") ==0) {
         numElements = SIZE;
@@ -115,7 +115,7 @@ int main(int argc, char** argv)
             printf("Error reading file \n");
             exit(EXIT_FAILURE);
         }
-        int count = 0;
+        long long count = 0;
         float c;
         
         while(fscanf(fp,"%f",&c) != EOF) {
@@ -126,7 +126,7 @@ int main(int argc, char** argv)
         numElements = count;
     }
     printf("Sorting list of %d floats.\n", numElements);
-    int mem_size = (numElements + (DIVISIONS*4))*sizeof(float);
+    long long mem_size = (numElements + (DIVISIONS*4))*sizeof(float);
 	// Allocate enough for the input list
 	float *cpu_idata = (float *)malloc(mem_size);
     float *cpu_odata = (float *)malloc(mem_size);
@@ -138,7 +138,7 @@ int main(int argc, char** argv)
 	float datamax = -FLT_MAX;
     
     if(strcmp(argv[1],"r")==0) {
-    for (int i = 0; i < numElements; i++) {
+    for (long long i = 0; i < numElements; i++) {
         // Generate random floats between 0 and 1 for the input data
 		cpu_idata[i] = ((float) rand() / RAND_MAX);
   
@@ -160,7 +160,7 @@ int main(int argc, char** argv)
     FILE *tp;
     const char filename2[]="./hybridinput.txt";
     tp = fopen(filename2,"w");
-    for(int i = 0; i < SIZE; i++) {
+    for(long long i = 0; i < SIZE; i++) {
         fprintf(tp,"%f ",cpu_idata[i]);
     }
 
@@ -259,8 +259,8 @@ int main(int argc, char** argv)
     printf("Checking result...");
     
 	// Result checking
-	int count = 0;
-	for(int i = 0; i < numElements; i++){
+	long long count = 0;
+	for(long long i = 0; i < numElements; i++){
 		if(cpu_odata[i] != gpu_odata[i])
 		{
 			printf("Sort missmatch on element %d: \n", i);
@@ -277,7 +277,7 @@ int main(int argc, char** argv)
     FILE *tp1;
     const char filename3[]="./hybridoutput.txt";
     tp1 = fopen(filename3,"w");
-    for(int i = 0; i < SIZE; i++) {
+    for(long long i = 0; i < SIZE; i++) {
         fprintf(tp1,"%f ",cpu_idata[i]);
     }
     

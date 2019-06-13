@@ -74,25 +74,25 @@ extern double wtime(void);
 
 /*----< kmeans_clustering() >---------------------------------------------*/
 float** kmeans_clustering(float **feature,    /* in: [npoints][nfeatures] */
-                          int     nfeatures,
-                          int     npoints,
-                          int     nclusters,
+                          size_t     nfeatures,
+                          size_t     npoints,
+                          size_t    nclusters,
                           float   threshold,
-                          int    *membership) /* out: [npoints] */
+                          size_t    *membership) /* out: [npoints] */
 {    
-    int      i, j, n = 0;				/* counters */
-	int		 loop=0, temp;
-    int     *new_centers_len;	/* [nclusters]: no. of points in each cluster */
+    size_t      i, j, n = 0;				/* counters */
+	size_t		 loop=0, temp;
+    size_t     *new_centers_len;	/* [nclusters]: no. of points in each cluster */
     float    delta;				/* if the point moved */
     float  **clusters;			/* out: [nclusters][nfeatures] */
     float  **new_centers;		/* [nclusters][nfeatures] */
 
-	int     *initial;			/* used to hold the index of points not yet selected
+	size_t     *initial;			/* used to hold the index of points not yet selected
 								   prevents the "birthday problem" of dual selection (?)
 								   considered holding initial cluster indices, but changed due to
 								   possible, though unlikely, infinite loops */
-	int      initial_points;
-	int		 c = 0;
+	size_t      initial_points;
+	size_t		 c = 0;
 
 	/* nclusters should never be > npoints
 	   that would guarantee a cluster without points */
@@ -106,7 +106,7 @@ float** kmeans_clustering(float **feature,    /* in: [npoints][nfeatures] */
         clusters[i] = clusters[i-1] + nfeatures;
 
 	/* initialize the random clusters */
-	initial = (int *) malloc (npoints * sizeof(int));
+	initial = (size_t *) malloc (npoints * sizeof(size_t));
 	for (i = 0; i < npoints; i++)
 	{
 		initial[i] = i;
@@ -134,7 +134,7 @@ float** kmeans_clustering(float **feature,    /* in: [npoints][nfeatures] */
 	  membership[i] = -1;
 
     /* allocate space for and initialize new_centers_len and new_centers */
-    new_centers_len = (int*) calloc(nclusters, sizeof(int));
+    new_centers_len = (size_t*) calloc(nclusters, sizeof(size_t));
 
     new_centers    = (float**) malloc(nclusters *            sizeof(float*));
     new_centers[0] = (float*)  calloc(nclusters * nfeatures, sizeof(float));

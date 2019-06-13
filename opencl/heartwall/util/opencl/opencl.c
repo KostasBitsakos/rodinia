@@ -8,7 +8,7 @@ extern "C" {
 
 #include <stdio.h>					// (in path known to compiler)		needed by printf
 
-#include <CL/cl.h>					// (in path specified to compiler)	needed by OpenCL types
+#include "cl.h"					// (in path specified to compiler)	needed by OpenCL types
 
 //===============================================================================================================================================================================================================200
 //	INCLUDE/DEFINE

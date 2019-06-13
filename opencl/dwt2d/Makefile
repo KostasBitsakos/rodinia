@@ -5,7 +5,7 @@
 include ../../common/make.config
 
 #Can be changed by `make TYPE=CPU`
-TYPE = GPU
+TYPE = CPU
 
 #Library
 ifeq ($(TYPE),GPU)

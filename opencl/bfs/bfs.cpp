@@ -17,7 +17,7 @@
 #include "CLHelper.h"
 #include "util.h"
 
-#define MAX_THREADS_PER_BLOCK 256
+#define MAX_THREADS_PER_BLOCK 512
 
 //Structure to hold a node information
 struct Node {
@@ -313,6 +313,11 @@ int main(int argc, char * argv[])
         }
         h_cost[source]=0;
         h_cost_ref[source]=0;
+
+	int problem_size = sizeof(no_of_nodes) + sizeof(Node)*no_of_nodes + sizeof(char)*no_of_nodes + sizeof(char)*no_of_nodes + sizeof(char)*no_of_nodes + sizeof(int)*edge_list_size + sizeof(edge_list_size) + sizeof(int)*no_of_nodes;
+
+        std::cout<<"Problem size in Memory: "<<problem_size/1000000.0<<" MB."<<std::endl;
+
         //---------------------------------------------------------
         //--gpu entry
         run_bfs_gpu(no_of_nodes,h_graph_nodes,edge_list_size,h_graph_edges, h_graph_mask, h_updating_graph_mask, h_graph_visited, h_cost);

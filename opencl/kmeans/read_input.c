@@ -111,19 +111,19 @@ int setup(int argc, char **argv) {
 		int		isBinaryFile = 0;
 
 		float	threshold = 0.001;		/* default value */
-		int		max_nclusters=5;		/* default value */
-		int		min_nclusters=5;		/* default value */
-		int		best_nclusters = 0;
-		int		nfeatures = 0;
-		int		npoints = 0;
+		size_t		max_nclusters=5;		/* default value */
+		size_t		min_nclusters=5;		/* default value */
+		size_t		best_nclusters = 0;
+		size_t		nfeatures = 0;
+		size_t		npoints = 0;
 		float	len;
 		         
 		float **features;
 		float **cluster_centres=NULL;
-		int		i, j, index;
-		int		nloops = 1;				/* default value */
+		size_t		i, j, index;
+		size_t		nloops = 1;				/* default value */
 				
-		int		isRMSE = 0;		
+		size_t		isRMSE = 0;		
 		float	rmse;
 		
 		int		isOutput = 0;
@@ -170,8 +170,8 @@ int setup(int argc, char **argv) {
             fprintf(stderr, "Error: no such file (%s)\n", filename);
             exit(1);
         }
-        read(infile, &npoints,   sizeof(int));
-        read(infile, &nfeatures, sizeof(int));        
+        read(infile, &npoints,   sizeof(size_t));
+        read(infile, &nfeatures, sizeof(size_t));        
 
         /* allocate space for features[][] and read attributes of all objects */
         buf         = (float*) malloc(npoints*nfeatures*sizeof(float));

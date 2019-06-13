@@ -21,7 +21,7 @@
 #define ROW_LENGTH	BLOCKSIZE * 4
 #define ROWS		4096
 #define DATA_SIZE (1024)
-#define MAX_SOURCE_SIZE (0x100000)
+#define MAX_SOURCE_SIZE (0x10000000)
 
 
 cl_device_id device_id;             // compute device id
@@ -66,7 +66,7 @@ extern float init_time, mem_alloc_time, h2d_time, kernel_time,
 ////////////////////////////////////////////////////////////////////////////////
 // The mergesort algorithm
 ////////////////////////////////////////////////////////////////////////////////
-void init_mergesort(int listsize){
+void init_mergesort(long long listsize){
     cl_uint num = 0;
     clGetPlatformIDs(0,NULL,&num);
     cl_platform_id platformID[num];
@@ -98,7 +98,7 @@ void init_mergesort(int listsize){
     
     FILE *fp;
     const char fileName[]="./mergesort.cl";
-    size_t source_size;
+    long long source_size;
     char *source_str;
     
     fp = fopen(fileName, "r");
@@ -112,7 +112,7 @@ void init_mergesort(int listsize){
 	source_size = fread(source_str, 1, MAX_SOURCE_SIZE, fp);
 
 	fclose(fp);
-    mergeProgram = clCreateProgramWithSource(mergeContext, 1, (const char **) &source_str, (const size_t *)&source_size, &err);
+    mergeProgram = clCreateProgramWithSource(mergeContext, 1, (const char **) &source_str, (const long long *)&source_size, &err);
     if (!mergeProgram)
     {
         printf("Error: Failed to create merge compute program!\n");
@@ -122,7 +122,7 @@ void init_mergesort(int listsize){
     err = clBuildProgram(mergeProgram, 0, NULL, NULL, NULL, NULL);
     if (err != CL_SUCCESS)
     {
-        size_t len;
+        long long len;
         char buffer[2048];
         
         printf("Error: Failed to build merge program executable!\n");
@@ -145,7 +145,7 @@ void finish_mergesort() {
     clReleaseCommandQueue(mergeCommands);
     clReleaseContext(mergeContext);
 }
-cl_float4* runMergeSort(int listsize, int divisions,
+cl_float4 *runMergeSort(long long listsize, int divisions,
                         cl_float4 *d_origList, cl_float4 *d_resultList,
                         int *sizes, int *nullElements,
                         unsigned int *origOffsets){

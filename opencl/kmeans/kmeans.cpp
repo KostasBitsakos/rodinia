@@ -150,16 +150,16 @@ cl_kernel kernel;
 cl_kernel kernel_s;
 cl_kernel kernel2;
 
-int   *membership_OCL;
-int   *membership_d;
+size_t   *membership_OCL;
+size_t   *membership_d;
 float *feature_d;
 float *clusters_d;
 float *center_d;
 
-int allocate(int n_points, int n_features, int n_clusters, float **feature)
+size_t allocate(size_t n_points, size_t n_features, size_t n_clusters, float **feature)
 {
 
-	int sourcesize = 1024*1024;
+	size_t sourcesize = 1024*1024;
 	char * source = (char *)calloc(sourcesize, sizeof(char)); 
 	if(!source) { printf("ERROR: calloc(%d) failed\n", sourcesize); return -1; }
 
@@ -212,7 +212,7 @@ int allocate(int n_points, int n_features, int n_clusters, float **feature)
 	if(err != CL_SUCCESS) { printf("ERROR: clCreateBuffer d_feature_swap (size:%d) => %d\n", n_points * n_features, err); return -1;}
 	d_cluster = clCreateBuffer(context, CL_MEM_READ_WRITE, n_clusters * n_features  * sizeof(float), NULL, &err );
 	if(err != CL_SUCCESS) { printf("ERROR: clCreateBuffer d_cluster (size:%d) => %d\n", n_clusters * n_features, err); return -1;}
-	d_membership = clCreateBuffer(context, CL_MEM_READ_WRITE, n_points * sizeof(int), NULL, &err );
+	d_membership = clCreateBuffer(context, CL_MEM_READ_WRITE, n_points * sizeof(size_t), NULL, &err );
 	if(err != CL_SUCCESS) { printf("ERROR: clCreateBuffer d_membership (size:%d) => %d\n", n_points, err); return -1;}
 #ifdef  TIMING
     gettimeofday(&tv_mem_alloc_end, NULL);
@@ -247,7 +247,7 @@ int allocate(int n_points, int n_features, int n_clusters, float **feature)
 #endif
     clReleaseEvent(event);
 
-	membership_OCL = (int*) malloc(n_points * sizeof(int));
+	membership_OCL = (size_t*) malloc(n_points * sizeof(size_t));
 }
 
 void deallocateMemory()
@@ -294,17 +294,17 @@ int main( int argc, char** argv)
 }
 
 int	kmeansOCL(float **feature,    /* in: [npoints][nfeatures] */
-           int     n_features,
-           int     n_points,
-           int     n_clusters,
-           int    *membership,
+           size_t     n_features,
+           size_t     n_points,
+           size_t     n_clusters,
+           size_t    *membership,
 		   float **clusters,
-		   int     *new_centers_len,
+		   size_t     *new_centers_len,
            float  **new_centers)	
 {
   
-	int delta = 0;
-	int i, j, k;
+	size_t delta = 0;
+	size_t i, j, k;
 	cl_int err = 0;
 	cl_event event;
 	
@@ -322,7 +322,7 @@ int	kmeansOCL(float **feature,    /* in: [npoints][nfeatures] */
 #endif
     clReleaseEvent(event);
 
-	int size = 0; int offset = 0;
+	size_t size = 0; size_t offset = 0;
 					
 	clSetKernelArg(kernel_s, 0, sizeof(void *), (void*) &d_feature_swap);
 	clSetKernelArg(kernel_s, 1, sizeof(void *), (void*) &d_cluster);
@@ -341,7 +341,7 @@ int	kmeansOCL(float **feature,    /* in: [npoints][nfeatures] */
     clReleaseEvent(event);
 
 	clFinish(cmd_queue);
-	err = clEnqueueReadBuffer(cmd_queue, d_membership, 1, 0, n_points * sizeof(int), membership_OCL, 0, 0, &event);
+	err = clEnqueueReadBuffer(cmd_queue, d_membership, 1, 0, n_points * sizeof(size_t), membership_OCL, 0, 0, &event);
 	if(err != CL_SUCCESS) { printf("ERROR: Memcopy Out\n"); return -1; }
 #ifdef TIMING
     d2h_time += probe_event_time(event,cmd_queue);
@@ -351,7 +351,7 @@ int	kmeansOCL(float **feature,    /* in: [npoints][nfeatures] */
 	delta = 0;
 	for (i = 0; i < n_points; i++)
 	{
-		int cluster_id = membership_OCL[i];
+		size_t cluster_id = membership_OCL[i];
 		new_centers_len[cluster_id]++;
 		if (membership_OCL[i] != membership[i])
 		{

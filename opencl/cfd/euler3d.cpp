@@ -209,7 +209,7 @@ int main(int argc, char** argv){
 		std::cout << "specify data file name and [device type] [device id]" << std::endl;
 		return 0;
 	}
-	const char* data_file_name = argv[1];
+	 const char* data_file_name = argv[1];
 	_clCmdParams(argc, argv);
 	cl_mem ff_variable, ff_flux_contribution_momentum_x, ff_flux_contribution_momentum_y,ff_flux_contribution_momentum_z,  ff_flux_contribution_density_energy;
 	cl_mem areas, elements_surrounding_elements, normals;
