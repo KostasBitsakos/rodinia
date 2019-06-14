@@ -42,8 +42,11 @@ struct timeval tv_close_start, tv_close_end;
 float init_time = 0, close_time = 0, total_time = 0,
 	mem_alloc_1_time = 0, mem_alloc_2_time = 0,
 	h2d_time = 0, h2d_1_time = 0, h2d_2_time = 0,
-	kernel1_time = 0, kernel2_time = 0,
+	exec_1_time = 0, exec_2_time = 0,
 	d2h_time = 0, d2h_1_time = 0, d2h_2_time = 0;
+size_t mem_alloc_1_bytes = 0, mem_alloc_2_bytes = 0,
+	h2d_1_bytes = 0, h2d_2_bytes = 0,
+	d2h_1_bytes = 0, d2h_2_bytes = 0;
 #endif
 
 static int initialize(void)
@@ -230,6 +233,11 @@ int bpnn_train_kernel(BPNN *net, float *eo, float *eh)
 	mem_alloc_1_time += tv.tv_sec * 1000.0 + (float) tv.tv_usec / 1000.0;
 	mem_alloc_2_time += tv.tv_sec * 1000.0 + (float) tv.tv_usec / 1000.0;
 
+	mem_alloc_1_bytes += (in + 1) * sizeof(float);
+	mem_alloc_1_bytes += (in + 1) * (hid + 1) * sizeof(float);
+	mem_alloc_2_bytes += (in + 1) * sizeof(float);
+	mem_alloc_2_bytes += (in + 1) * (hid + 1) * sizeof(float);
+
 	gettimeofday(&tv_mem_alloc_start, NULL);
 #endif
 
@@ -245,6 +253,9 @@ int bpnn_train_kernel(BPNN *net, float *eo, float *eh)
 	gettimeofday(&tv_mem_alloc_end, NULL);
 	tvsub(&tv_mem_alloc_end, &tv_mem_alloc_start, &tv);
 	mem_alloc_1_time += tv.tv_sec * 1000.0 + (float) tv.tv_usec / 1000.0;
+
+	mem_alloc_1_bytes += (hid + 1) * sizeof(float);
+	mem_alloc_1_bytes += num_blocks * WIDTH * sizeof(float);
 
 	gettimeofday(&tv_mem_alloc_start, NULL);
 #endif
@@ -262,6 +273,9 @@ int bpnn_train_kernel(BPNN *net, float *eo, float *eh)
 	gettimeofday(&tv_mem_alloc_end, NULL);
 	tvsub(&tv_mem_alloc_end, &tv_mem_alloc_start, &tv);
 	mem_alloc_2_time += tv.tv_sec * 1000.0 + (float) tv.tv_usec / 1000.0;
+
+	mem_alloc_2_bytes += (hid + 1) * sizeof(float);
+	mem_alloc_2_bytes += (in + 1) * (hid + 1) * sizeof(float);
 #endif
 
 
@@ -286,6 +300,11 @@ int bpnn_train_kernel(BPNN *net, float *eo, float *eh)
 	h2d_time = probe_event_time(write_event[1], cmd_queue);
 	h2d_1_time += h2d_time;
 	h2d_2_time += h2d_time;
+
+	h2d_1_bytes += (in + 1) * sizeof(float);
+	h2d_1_bytes += (in + 1) * (hid + 1) * sizeof(float);
+	h2d_2_bytes += (in + 1) * sizeof(float);
+	h2d_2_bytes += (in + 1) * (hid + 1) * sizeof(float);
 #endif
 	clReleaseEvent(write_event[0]);
 	clReleaseEvent(write_event[1]);
@@ -302,7 +321,7 @@ int bpnn_train_kernel(BPNN *net, float *eo, float *eh)
 	err = clEnqueueNDRangeKernel(cmd_queue, kernel1, 2, NULL, global_work, local_work, 0, 0, &event);
 	if(err != CL_SUCCESS) { printf("ERROR: 1  clEnqueueNDRangeKernel()=>%d failed\n", err); return -1; }
 #ifdef TIMING
-	kernel1_time += probe_event_time(event,cmd_queue);
+	exec_1_time += probe_event_time(event,cmd_queue);
 #endif
 	clReleaseEvent(event);
 
@@ -311,6 +330,8 @@ int bpnn_train_kernel(BPNN *net, float *eo, float *eh)
 	if(err != CL_SUCCESS) { printf("ERROR: 1  clEnqueueReadBuffer: partial sum\n"); return -1; }
 #ifdef TIMING
 	d2h_1_time += probe_event_time(event, cmd_queue);
+
+	d2h_1_bytes += num_blocks * WIDTH * sizeof(float);
 #endif
 	clReleaseEvent(event);
 
@@ -366,7 +387,7 @@ int bpnn_train_kernel(BPNN *net, float *eo, float *eh)
 	err = clEnqueueNDRangeKernel(cmd_queue, kernel2, 2, NULL, global_work, local_work, 0, 0, &event);
 	if(err != CL_SUCCESS) { printf("ERROR: 1  clEnqueueNDRangeKernel()=>%d failed\n", err); return -1; }
 #ifdef TIMING
-	kernel2_time += probe_event_time(event, cmd_queue);
+	exec_2_time += probe_event_time(event, cmd_queue);
 #endif
 	clReleaseEvent(event);
 
@@ -377,6 +398,9 @@ int bpnn_train_kernel(BPNN *net, float *eo, float *eh)
 	d2h_time = probe_event_time(event, cmd_queue);
 	d2h_1_time += d2h_time;
 	d2h_2_time += d2h_time;
+
+	d2h_1_bytes += (in + 1) * sizeof(float);
+	d2h_2_bytes += (in + 1) * sizeof(float);
 #endif
 	clReleaseEvent(event);
 
@@ -387,6 +411,9 @@ int bpnn_train_kernel(BPNN *net, float *eo, float *eh)
 	d2h_time = probe_event_time(event, cmd_queue);
 	d2h_1_time += d2h_time;
 	d2h_2_time += d2h_time;
+
+	d2h_1_bytes += (in + 1) * (hid + 1) * sizeof(float);
+	d2h_2_bytes += (in + 1) * (hid + 1) * sizeof(float);
 #endif
 	clReleaseEvent(event);
 
@@ -413,16 +440,43 @@ int bpnn_train_kernel(BPNN *net, float *eo, float *eh)
 	tvsub(&tv_close_end, &tv_total_start, &tv);
 	total_time = tv.tv_sec * 1000.0 + (float) tv.tv_usec / 1000.0;
 
+#if 0
 	printf("Init: %f\n", init_time);
-	printf("MemAlloc (kernel1): %f\n", mem_alloc_1_time);
-	printf("MemAlloc (kernel2): %f\n", mem_alloc_2_time);
-	printf("HtoD (kernel1): %f\n", h2d_1_time);
-	printf("HtoD (kernel2): %f\n", h2d_2_time);
-	printf("Exec (kernel1): %f\n", kernel1_time);
-	printf("Exec (kernel2): %f\n", kernel2_time);
-	printf("DtoH (kernel1): %f\n", d2h_1_time);
-	printf("DtoH (kernel2): %f\n", d2h_2_time);
+	printf("mem_alloc_time (%s): %f\n", kernel_bp1, mem_alloc_1_time);
+	printf("mem_alloc_time (%s): %f\n", kernel_bp2, mem_alloc_2_time);
+	printf("mem_alloc_bytes (%s): %zd\n", kernel_bp1, mem_alloc_1_bytes);
+	printf("mem_alloc_bytes (%s): %zd\n", kernel_bp2, mem_alloc_2_bytes);
+	printf("HtoD_time (%s): %f\n", kernel_bp1, h2d_1_time);
+	printf("HtoD_time (%s): %f\n", kernel_bp2, h2d_2_time);
+	printf("HtoD_bytes (%s): %zd\n", kernel_bp1, h2d_1_bytes);
+	printf("HtoD_bytes (%s): %zd\n", kernel_bp2, h2d_2_bytes);
+	printf("exec_time (%s): %f\n", kernel_bp1, exec_1_time);
+	printf("exec_time (%s): %f\n", kernel_bp2, exec_2_time);
+	printf("DtoH_time (%s): %f\n", kernel_bp1, d2h_1_time);
+	printf("DtoH_time (%s): %f\n", kernel_bp2, d2h_2_time);
+	printf("DtoH_bytes (%s): %zd\n", kernel_bp1, d2h_1_bytes);
+	printf("DtoH_bytes (%s): %zd\n", kernel_bp2, d2h_2_bytes);
 	printf("Close: %f\n", close_time);
 	printf("Total: %f\n", total_time);
+#endif
+	printf("Init: %f\n", init_time);
+	printf("Close: %f\n", close_time);
+	printf("Total: %f\n", total_time);
+
+	printf("\nkernel_name,mem_alloc_bytes,mem_alloc_time,HtoD_bytes,HtoD_time,exec_time,DtoH_bytes,DtoH_time,total_time,platform,device\n");
+	printf("%s,%zd,%f,%zd,%f,%f,%zd,%f,%f,%d,%d\n", kernel_bp1,
+		mem_alloc_1_bytes, mem_alloc_1_time,
+		h2d_1_bytes, h2d_1_time,
+		exec_1_time,
+		d2h_1_bytes, d2h_1_time,
+		mem_alloc_1_time + h2d_1_time + exec_1_time + d2h_1_time,
+		platform_id_inuse, device_id_inuse);
+	printf("%s,%zd,%f,%zd,%f,%f,%zd,%f,%f,%d,%d\n", kernel_bp2,
+		mem_alloc_2_bytes, mem_alloc_2_time,
+		h2d_2_bytes, h2d_2_time,
+		exec_2_time,
+		d2h_2_bytes, d2h_2_time,
+		mem_alloc_2_time + h2d_2_time + exec_2_time + d2h_2_time,
+		platform_id_inuse, device_id_inuse);
 #endif
 }
