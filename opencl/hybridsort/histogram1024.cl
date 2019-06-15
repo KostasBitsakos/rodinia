@@ -41,61 +41,56 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 inline void addData1024(volatile __local uint *s_WarpHist, uint data, uint tag){
-    uint count;
-    do{
-        count = s_WarpHist[data]  & 0x07FFFFFFU;
-        count = tag | (count + 1);
-        s_WarpHist[data] = count;
-    }while(s_WarpHist[data] != count);
+	uint count;
+	do{
+		count = s_WarpHist[data]  & 0x07FFFFFFU;
+		count = tag | (count + 1);
+		s_WarpHist[data] = count;
+	}while(s_WarpHist[data] != count);
 }
 
- __kernel void histogram1024Kernel(
-                  __global uint *d_Result,
-                  __global float *d_Data,
-                     float minimum,
-                     float maximum,
-                    uint dataCount
-                  ){
-    const int gid = get_global_id(0);
-    const int gsize = get_global_size(0);
-    //Per-warp substorage storage
-     int mulBase = (get_local_id(0) >> WARP_LOG_SIZE);
-     const int warpBase = IMUL(mulBase, BIN_COUNT);
-    __local unsigned int s_Hist[BLOCK_MEMORY];
-     int test = 0;
-     
-//     if(get_global_id(0) == 0) {
-//     for(int i = 0; i < 1024; i++) {
-//             d_Result[i] = 0;
-//         }
-//     }
-     const uint tag =  get_local_id(0) << (32 - WARP_LOG_SIZE);
-    //Clear shared memory storage for current threadblock before processing
-     for(uint i = get_local_id(0); i < BLOCK_MEMORY; i+=get_local_size(0)){
-        s_Hist[i] = 0;
- }
+__kernel void histogram1024Kernel(
+		__global uint *d_Result,
+		__global float *d_Data,
+		float minimum,
+		float maximum,
+		uint dataCount)
+{
+	const int gid = get_global_id(0);
+	const int gsize = get_global_size(0);
+	//Per-warp substorage storage
+	int mulBase = (get_local_id(0) >> WARP_LOG_SIZE);
+	const int warpBase = IMUL(mulBase, BIN_COUNT);
+	__local unsigned int s_Hist[BLOCK_MEMORY];
+	int test = 0;
 
-    
-    //Read through the entire input buffer, build per-warp histograms
-     barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
-    for(int pos = get_global_id(0); pos < dataCount; pos += get_global_size(0)){
-        uint data4 = ((d_Data[pos] - minimum)/(maximum - minimum)) * BIN_COUNT;
-        addData1024(s_Hist + warpBase, data4 & 0x3FFU, tag);
-    }
-    
-    //Per-block histogram reduction
-     // Sum is adding to index 0, pls fix
-     barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
-    for(int pos = get_local_id(0); pos < BIN_COUNT; pos += get_local_size(0)){
-        uint sum = 0;
-        for(int i = 0; i < BLOCK_MEMORY; i+= BIN_COUNT){
-            sum += s_Hist[pos + i] & 0x07FFFFFFU;
-        }
-        atomic_add(d_Result+pos,sum);
-    }
-     
-     
-     
+	//     if(get_global_id(0) == 0) {
+	//     for(int i = 0; i < 1024; i++) {
+	//             d_Result[i] = 0;
+	//         }
+	//     }
+	const uint tag =  get_local_id(0) << (32 - WARP_LOG_SIZE);
+	//Clear shared memory storage for current threadblock before processing
+	for(uint i = get_local_id(0); i < BLOCK_MEMORY; i+=get_local_size(0)){
+		s_Hist[i] = 0;
+	}
+
+
+	//Read through the entire input buffer, build per-warp histograms
+	barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
+	for(int pos = get_global_id(0); pos < dataCount; pos += get_global_size(0)){
+		uint data4 = ((d_Data[pos] - minimum)/(maximum - minimum)) * BIN_COUNT;
+		addData1024(s_Hist + warpBase, data4 & 0x3FFU, tag);
+	}
+
+	//Per-block histogram reduction
+	// Sum is adding to index 0, pls fix
+	barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
+	for(int pos = get_local_id(0); pos < BIN_COUNT; pos += get_local_size(0)){
+		uint sum = 0;
+		for(int i = 0; i < BLOCK_MEMORY; i+= BIN_COUNT){
+			sum += s_Hist[pos + i] & 0x07FFFFFFU;
+		}
+		atomic_add(d_Result+pos,sum);
+	}
 }
-
-

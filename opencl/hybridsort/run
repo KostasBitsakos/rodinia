@@ -1,1 +1,38 @@
-./hybridsort.out r -p 0 -d 2
+#!/bin/sh
+#
+# author: ckatsak
+#
+# This script executes 'hybridsort.out'. Example:
+#     $ PLATFORM=0 DEVICE=1 ./run
+# Platform and device of choice can be specified via the PLATFORM and DEVICE
+# env vars.
+# stdout is redirected to the file specified via the STDOUT env var, or to
+# file '.run.out' by default.
+# Upon successful execution (zero exit code) file '.run.out' is unlinked.
+# In case of non-zero exit code, file '.run.out' is retained for further
+# inspection.
+# User-specified files are never unlinked whatsoever.
+
+# XXX @kbitsak : Platform and device can be specified here as well!
+if [ -z "$PLATFORM" ]; then
+	PLATFORM=0
+fi
+if [ -z "$DEVICE" ]; then
+	DEVICE=1
+fi
+
+stdout_file=".run.out"
+if [ -z "${STDOUT+x}" ]; then
+	STDOUT=$stdout_file
+fi
+
+./hybridsort.out r -p $PLATFORM -d $DEVICE 1>$STDOUT
+
+exit_code=$?
+echo -n "\nexit code: $exit_code\n"
+if [ "$exit_code" -ne "0" ]; then
+	echo -n "Check stdout in file '$stdout_file'."
+	echo -n "Possible error cause:\n'$(tail -n1 ${stdout_file})'\n"
+else
+	rm -f $stdout_file
+fi
