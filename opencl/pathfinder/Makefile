@@ -32,7 +32,6 @@ main.o: main.cpp OpenCL.cpp kernels.cl ../util/timing.c
 	$(CXX) $(CXXFLAGS) main.cpp OpenCL.cpp ../util/timing.c -I../util -DTIMING
 
 clean:
-	clear
 	@rm -f pathfinder.out *.o *.out *~ *\#
 
 run: a.out
