@@ -1,4 +1,6 @@
 #!/bin/bash
 
-export DATA_DIR=/various/kbitsak/data
-./kmeans.out -o -i ${DATA_DIR}/kmeans/100_10.txt -p 1 -d 0$@
+#export DATA_DIR=/various/kbitsak/data
+#./kmeans.out -o -i ${DATA_DIR}/kmeans/100_10.txt -p 1 -d 0$@
+
+./kmeans.out -o -i data/100 -p 0 -d 1 $@

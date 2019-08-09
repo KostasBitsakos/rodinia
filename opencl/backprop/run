@@ -1,3 +1,5 @@
 #!/bin/bash
-
-./backprop.out -n 4194304 -p 0 -d 2 $@
+for size in 512 1024 2048 4096 16384 32768 131072 524288 1048576 2097152
+do
+	./backprop.out -n $size -p 1 -d 0 $@
+done

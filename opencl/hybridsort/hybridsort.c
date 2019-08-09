@@ -24,7 +24,7 @@
 
 // Use a static data size for simplicity
 //
-#define SIZE (1000000)
+#define SIZE (5000)
 
 #define DATA_SIZE (1024)
 #define MAX_SOURCE_SIZE (0x1000000)
